@@ -1,0 +1,30 @@
+#pragma once
+
+#include "driver/gpio.h"
+
+// SPI2
+#define SPI2_MISO GPIO_NUM_19
+#define SPI2_MOSI GPIO_NUM_20
+#define SPI2_SCK GPIO_NUM_21
+
+// T卡
+#define TF_CS GPIO_NUM_35
+
+// LCD
+#define LCD_CS GPIO_NUM_36
+#define LCD_LED GPIO_NUM_39
+#define LCD_DC GPIO_NUM_40
+#define LCD_RESET GPIO_NUM_41
+
+// TOUCH
+#define LCD_TOUCH_IRQ GPIO_NUM_38
+
+// INMP441
+#define INMP441_BCLK GPIO_NUM_4
+#define INMP441_WS GPIO_NUM_5
+#define INMP441_SD GPIO_NUM_6
+
+// MAX98357A
+#define MAX98357A_LR GPIO_NUM_15
+#define MAX98357A_BCLK GPIO_NUM_16
+#define MAX98357A_SD GPIO_NUM_17
