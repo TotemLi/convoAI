@@ -2,7 +2,7 @@
 
 ### 引脚配置
 #### spi2
-MISO: 19
+MISO: 47
 MOSI: 20
 SCK: 21
 

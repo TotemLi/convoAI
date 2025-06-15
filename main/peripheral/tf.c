@@ -10,8 +10,7 @@
 #include "esp_log.h"
 #include "common.h"
 #include "pin.h"
-
-#define MOUNT_POINT "/sdcard"
+#include "tf.h"
 
 static sdmmc_card_t *card;
 static const char *TAG = "spi";
@@ -61,7 +60,7 @@ esp_err_t list_dir(const char *path)
         ESP_LOGI(TAG, "name: %s, type: %d, ino: %d", entry->d_name, entry->d_type, entry->d_ino);
     }
     closedir(dir);
-    return ESP_FAIL;
+    return ESP_OK;
 }
 
 esp_err_t make_dir(const char *path)
