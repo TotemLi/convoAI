@@ -2,21 +2,24 @@
 
 ### 引脚配置
 #### spi2
-MISO: 47
-MOSI: 20
-SCK: 21
+MISO: 35
+MOSI: 36
+SCK: 37
 
 #### T卡(SD)
-CS: 35
+CS: 38
 
 #### LCD(st7789)
-CS: 36
-LED(背光): 39
-DC(数据): 40
-RESET(重置): 41
+CS: 39
+LED(背光): 40
+DC(数据): 41
+RESET(重置): 42
 
 #### TOUCH(XPT2046)
-IRQ(中断): 38
+IRQ(中断): 2
+CS: 1
+T_DO: MOSI
+T_DIN: MISO
 
 #### INMP441
 BCLK: 4
