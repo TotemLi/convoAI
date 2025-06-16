@@ -29,7 +29,7 @@ esp_err_t INMP441_init(void)
             .clk_src = I2S_CLK_SRC_DEFAULT,
             .ext_clk_freq_hz = 0,
             .mclk_multiple = MCLK_MULTIPLE,
-            .bclk_div = 8,
+            // .bclk_div = 8,
         },
 
         // 虽然inmp441采集数据为24bit，但是仍可使用32bit来接收，中间存储过程不需考虑，只要让声音怎么进来就怎么出去即可
@@ -88,7 +88,7 @@ esp_err_t MAX98357A_init(void)
             .clk_src = I2S_CLK_SRC_DEFAULT,
             .ext_clk_freq_hz = 0,
             .mclk_multiple = MCLK_MULTIPLE,
-            .bclk_div = 8,
+            // .bclk_div = 8,
         },
 
         .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(WIDTH, I2S_SLOT_MODE_MONO),

@@ -6,6 +6,7 @@
 #include "peripheral/tf.h"
 #include "peripheral/screen.h"
 #include "peripheral/audio.h"
+#include "ui/home_page.h"
 
 static const char *TAG = "main";
 
@@ -25,13 +26,13 @@ void app_main(void)
     //     ESP_LOGI(TAG, "list_dir err: %d", err);
     //     return;
     // }
-    // err = screen_init();
-    // if (err != ESP_OK)
-    // {
-    //     ESP_LOGI(TAG, "mount_init err: %d", err);
-    //     return;
-    // }
-    // app_main_display();
+    err = screen_init();
+    if (err != ESP_OK)
+    {
+        ESP_LOGI(TAG, "mount_init err: %d", err);
+        return;
+    }
+    app_main_display();
     // show_button();
 
     // err = INMP441_init();

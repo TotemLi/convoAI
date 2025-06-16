@@ -15,5 +15,3 @@
 #define LCD_DRAW_BUFF_DOUBLE (1)
 
 esp_err_t screen_init(void);
-void app_main_display(void);
-void show_button(void);
