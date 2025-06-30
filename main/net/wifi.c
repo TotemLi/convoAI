@@ -10,6 +10,12 @@
 static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "wifi";
 static int s_retry_num = 0;
+static nvs_handle_t wifi_remeber_handle;
+uint8_t remembered_num = 0;
+static char **remembered_ssid; // 已存储的wifi账号
+
+// 把连接成功的wifi记住
+static char *remeber_ssid, *remeber_password;
 
 void wifi_connect(char *ssid, char *password, wifi_auth_mode_t authmode)
 {
@@ -21,6 +27,8 @@ void wifi_connect(char *ssid, char *password, wifi_auth_mode_t authmode)
 
     strcpy((char *)wifi_config.sta.ssid, ssid);
     strcpy((char *)wifi_config.sta.password, password);
+    remeber_ssid = ssid;
+    remeber_password = password;
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     esp_wifi_connect();
@@ -94,7 +102,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE)
     {
         // wifi扫描结束，打印结果
-        wifi_scan_result(5);
+        wifi_scan_result(10);
     }
 
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
@@ -103,11 +111,46 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
+        // 存储账号密码
+        nvs_set_str(wifi_remeber_handle, remeber_ssid, remeber_password);
     }
+}
+
+void get_all_wifi_remeber(void)
+{
+    uint8_t alloc_num = 4;
+    remembered_ssid = (char **)malloc(4 * sizeof(char *));
+    nvs_iterator_t it = NULL;
+    esp_err_t err = nvs_entry_find(NULL, "wifi_remember", NVS_TYPE_STR, &it);
+    while (err == ESP_OK)
+    {
+        if (remembered_num >= alloc_num)
+        {
+            // 空间不够用了，再分配一点
+            char **temp = (char **)realloc(remembered_ssid, (alloc_num + 4) * sizeof(char *));
+            if (temp == NULL)
+            {
+                printf("内存分配失败\n");
+            }
+            remembered_ssid = temp;
+            alloc_num += 4;
+        }
+        nvs_entry_info_t info;
+        nvs_entry_info(it, &info);
+        printf("remebered ssid: %s \n", info.key);
+        err = nvs_entry_next(&it);
+        remembered_ssid[remembered_num] = info.key;
+        remembered_num++;
+    }
+    nvs_release_iterator(it);
 }
 
 void wifi_init(void)
 {
+
+    ESP_ERROR_CHECK(nvs_open("wifi_remember", NVS_READWRITE, &wifi_remeber_handle));
+    get_all_wifi_remeber();
+
     s_wifi_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_netif_init());
 
