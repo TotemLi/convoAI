@@ -11,7 +11,7 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "wifi";
 static int s_retry_num = 0;
 static nvs_handle_t wifi_remeber_handle;
-uint8_t remembered_num = 0;
+static uint8_t remembered_num = 0;
 static char **remembered_ssid; // 已存储的wifi账号
 
 // 把连接成功的wifi记住
@@ -70,10 +70,10 @@ static char *auth_mode_str(int authmode)
 void wifi_scan_result(uint16_t scan_num)
 {
     uint16_t number = scan_num;
-    wifi_ap_record_t ap_info[scan_num];
-    uint16_t ap_count = 0;
-    memset(ap_info, 0, sizeof(ap_info));
+    wifi_ap_record_t *ap_info = (wifi_ap_record_t *)malloc(scan_num * sizeof(wifi_ap_record_t));
+    memset(ap_info, 0, scan_num * sizeof(wifi_ap_record_t)); // 将内存置空
 
+    uint16_t ap_count = 0;
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
     ESP_LOGI(TAG, "Total APs scanned = %u, actual AP number ap_info holds = %u", ap_count, number);
@@ -82,8 +82,11 @@ void wifi_scan_result(uint16_t scan_num)
         ESP_LOGI(TAG, "ssid: %s, rssi: %d, authmode: %s, channel: %d", ap_info[i].ssid, ap_info[i].rssi, auth_mode_str(ap_info[i].authmode), ap_info[i].primary);
     }
 
+    // 判断是否有认识的wifi，有则选择一个进行自动连接
+
     // 连接wifi
     wifi_connect("XIAOJING", "xiaojing", WIFI_AUTH_WPA2_PSK);
+    free(ap_info);
 }
 
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -112,7 +115,15 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         // 存储账号密码
-        nvs_set_str(wifi_remeber_handle, remeber_ssid, remeber_password);
+        esp_err_t err = nvs_set_str(wifi_remeber_handle, remeber_ssid, remeber_password);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "save ssid err: %s", esp_err_to_name(err));
+        }
+        else
+        {
+            ESP_LOGI(TAG, "save ssid success, ssid: %s, password: %s", remeber_ssid, remeber_password);
+        }
     }
 }
 
@@ -121,7 +132,7 @@ void get_all_wifi_remeber(void)
     uint8_t alloc_num = 4;
     remembered_ssid = (char **)malloc(4 * sizeof(char *));
     nvs_iterator_t it = NULL;
-    esp_err_t err = nvs_entry_find(NULL, "wifi_remember", NVS_TYPE_STR, &it);
+    esp_err_t err = nvs_entry_find(NVS_DEFAULT_PART_NAME, "wifi_remember", NVS_TYPE_STR, &it);
     while (err == ESP_OK)
     {
         if (remembered_num >= alloc_num)
@@ -137,7 +148,7 @@ void get_all_wifi_remeber(void)
         }
         nvs_entry_info_t info;
         nvs_entry_info(it, &info);
-        printf("remebered ssid: %s \n", info.key);
+        ESP_LOGI(TAG, "remebered ssid: %s", info.key);
         err = nvs_entry_next(&it);
         remembered_ssid[remembered_num] = info.key;
         remembered_num++;
