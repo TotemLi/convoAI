@@ -24,7 +24,10 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(err);
 
-    wifi_init();
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    ESP_ERROR_CHECK(wifi_init());
+    ESP_ERROR_CHECK(enable_wifi());
 
     // // err = mount_init();
     // // if (err != ESP_OK)

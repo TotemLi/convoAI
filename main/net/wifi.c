@@ -1,21 +1,19 @@
 #include <string.h>
+#include <errno.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "esp_event.h"
+#include "esp_err.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
+#include "wifi.h"
+
+static wifi_state_t wifi_state;
 
 static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "wifi";
-static int s_retry_num = 0;
-static nvs_handle_t wifi_remeber_handle;
-static uint8_t remembered_num = 0;
-static char **remembered_ssid; // 已存储的wifi账号
-
-// 把连接成功的wifi记住
-static char *remeber_ssid, *remeber_password;
 
 void wifi_connect(char *ssid, char *password, wifi_auth_mode_t authmode)
 {
@@ -27,8 +25,8 @@ void wifi_connect(char *ssid, char *password, wifi_auth_mode_t authmode)
 
     strcpy((char *)wifi_config.sta.ssid, ssid);
     strcpy((char *)wifi_config.sta.password, password);
-    remeber_ssid = ssid;
-    remeber_password = password;
+    wifi_state.ssid = ssid;
+    wifi_state.password = password;
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     esp_wifi_connect();
@@ -113,69 +111,85 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         // 获取到ip事件
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-        s_retry_num = 0;
         // 存储账号密码
-        esp_err_t err = nvs_set_str(wifi_remeber_handle, remeber_ssid, remeber_password);
+        esp_err_t err = nvs_set_str(wifi_state.wifi_remeber_handle, wifi_state.ssid, wifi_state.password);
         if (err != ESP_OK)
         {
             ESP_LOGE(TAG, "save ssid err: %s", esp_err_to_name(err));
         }
         else
         {
-            ESP_LOGI(TAG, "save ssid success, ssid: %s, password: %s", remeber_ssid, remeber_password);
+            ESP_LOGI(TAG, "save ssid success, ssid: %s", wifi_state.ssid);
         }
     }
 }
 
-void get_all_wifi_remeber(void)
+esp_err_t load_remembered_ssid(void)
 {
+    ESP_RETURN_ON_ERROR(nvs_open(wifi_state.wifi_remember_namespace, NVS_READWRITE, &wifi_state.wifi_remeber_handle), TAG, "");
     uint8_t alloc_num = 4;
-    remembered_ssid = (char **)malloc(4 * sizeof(char *));
+    wifi_state.remembered_ssid = (char **)malloc(4 * sizeof(char *));
     nvs_iterator_t it = NULL;
-    esp_err_t err = nvs_entry_find(NVS_DEFAULT_PART_NAME, "wifi_remember", NVS_TYPE_STR, &it);
+    esp_err_t err = nvs_entry_find(NVS_DEFAULT_PART_NAME, wifi_state.wifi_remember_namespace, NVS_TYPE_STR, &it);
     while (err == ESP_OK)
     {
-        if (remembered_num >= alloc_num)
+        if (wifi_state.remembered_num >= alloc_num)
         {
             // 空间不够用了，再分配一点
-            char **temp = (char **)realloc(remembered_ssid, (alloc_num + 4) * sizeof(char *));
+            char **temp = (char **)realloc(wifi_state.remembered_ssid, (alloc_num + 4) * sizeof(char *));
             if (temp == NULL)
             {
-                printf("内存分配失败\n");
+                return (esp_err_t)errno;
             }
-            remembered_ssid = temp;
+            wifi_state.remembered_ssid = temp;
             alloc_num += 4;
         }
         nvs_entry_info_t info;
         nvs_entry_info(it, &info);
         ESP_LOGI(TAG, "remebered ssid: %s", info.key);
         err = nvs_entry_next(&it);
-        remembered_ssid[remembered_num] = info.key;
-        remembered_num++;
+        wifi_state.remembered_ssid[wifi_state.remembered_num] = info.key;
+        wifi_state.remembered_num++;
     }
     nvs_release_iterator(it);
+    return ESP_OK;
 }
 
-void wifi_init(void)
+esp_err_t wifi_init(void)
 {
+    wifi_state.wifi_enabled = false;
+    wifi_state.wifi_connected = false;
+    wifi_state.connect_retry_num = 3;
+    wifi_state.wifi_remember_namespace = "wifi_remember";
 
-    ESP_ERROR_CHECK(nvs_open("wifi_remember", NVS_READWRITE, &wifi_remeber_handle));
-    get_all_wifi_remeber();
+    ESP_RETURN_ON_ERROR(load_remembered_ssid(), TAG, "");
+    return ESP_OK;
+}
 
+esp_err_t enable_wifi(void)
+{
     s_wifi_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_RETURN_ON_ERROR(esp_netif_init(), TAG, "");
 
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_RETURN_ON_ERROR(esp_wifi_init(&cfg), TAG, "");
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip));
+    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id), TAG, "");
+    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip), TAG, "");
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), TAG, "");
+    ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "");
+    return ESP_OK;
+}
+
+esp_err_t close_wifi(void)
+{
+    ESP_RETURN_ON_ERROR(esp_wifi_disconnect(), TAG, "");
+    ESP_RETURN_ON_ERROR(esp_wifi_stop(), TAG, "");
+    ESP_RETURN_ON_ERROR(esp_wifi_deinit(), TAG, "");
+    return ESP_OK;
 }
