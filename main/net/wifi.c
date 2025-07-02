@@ -5,6 +5,7 @@
 #include "freertos/event_groups.h"
 #include "esp_event.h"
 #include "esp_err.h"
+#include "esp_check.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
@@ -162,7 +163,7 @@ esp_err_t wifi_init(void)
     wifi_state.connect_retry_num = 3;
     wifi_state.wifi_remember_namespace = "wifi_remember";
 
-    ESP_ERROR_CHECK(load_remembered_ssid());
+    ESP_RETURN_ON_ERROR(load_remembered_ssid(), TAG, "load_remembered_ssid");
     return ESP_OK;
 }
 
