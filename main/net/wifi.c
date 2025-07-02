@@ -126,7 +126,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
 
 esp_err_t load_remembered_ssid(void)
 {
-    ESP_RETURN_ON_ERROR(nvs_open(wifi_state.wifi_remember_namespace, NVS_READWRITE, &wifi_state.wifi_remeber_handle), TAG, "");
+    ESP_ERROR_CHECK(nvs_open(wifi_state.wifi_remember_namespace, NVS_READWRITE, &wifi_state.wifi_remeber_handle));
     uint8_t alloc_num = 4;
     wifi_state.remembered_ssid = (char **)malloc(4 * sizeof(char *));
     nvs_iterator_t it = NULL;
@@ -162,34 +162,34 @@ esp_err_t wifi_init(void)
     wifi_state.connect_retry_num = 3;
     wifi_state.wifi_remember_namespace = "wifi_remember";
 
-    ESP_RETURN_ON_ERROR(load_remembered_ssid(), TAG, "");
+    ESP_ERROR_CHECK(load_remembered_ssid());
     return ESP_OK;
 }
 
 esp_err_t enable_wifi(void)
 {
     s_wifi_event_group = xEventGroupCreate();
-    ESP_RETURN_ON_ERROR(esp_netif_init(), TAG, "");
+    ESP_ERROR_CHECK(esp_netif_init());
 
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_RETURN_ON_ERROR(esp_wifi_init(&cfg), TAG, "");
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
-    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id), TAG, "");
-    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip), TAG, "");
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip));
 
-    ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), TAG, "");
-    ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "");
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
     return ESP_OK;
 }
 
 esp_err_t close_wifi(void)
 {
-    ESP_RETURN_ON_ERROR(esp_wifi_disconnect(), TAG, "");
-    ESP_RETURN_ON_ERROR(esp_wifi_stop(), TAG, "");
-    ESP_RETURN_ON_ERROR(esp_wifi_deinit(), TAG, "");
+    ESP_ERROR_CHECK(esp_wifi_disconnect());
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    ESP_ERROR_CHECK(esp_wifi_deinit());
     return ESP_OK;
 }
