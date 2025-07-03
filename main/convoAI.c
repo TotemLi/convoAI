@@ -11,13 +11,46 @@
 #include "ui/home_page.h"
 #include "net/wifi.h"
 #include "net/http_server.h"
+#include "cjson/cJSON.h"
 
 static const char *TAG = "main";
 
 esp_err_t test_get_handler(httpd_req_t *req)
 {
-    ESP_LOGI(TAG, "get test");
-    httpd_resp_send(req, "ok", HTTPD_RESP_USE_STRLEN);
+
+    size_t body_length = req->content_len;
+    if (body_length <= 0)
+    {
+        // TODO 封装一个返回参数错误的函数
+        return ESP_OK;
+    }
+
+    char *buf = malloc(body_length + 1);
+    if (!buf)
+    {
+        // TODO 封装一个返回服务异常的函数
+        return ESP_OK;
+    }
+
+    httpd_req_recv(req, buf, body_length);
+    buf[body_length] = '\0';
+
+    // ESP_LOGI(TAG, "body: %s", buf);
+    cJSON *cjson_body = cJSON_Parse(buf);
+    int a = cJSON_GetObjectItem(cjson_body, "a")->valueint;
+    ESP_LOGI(TAG, "a: %d", a);
+    cJSON *cjson_c = cJSON_GetObjectItem(cjson_body, "c");
+    int c_len = cJSON_GetArraySize(cjson_c);
+    ESP_LOGI(TAG, "c[%d]: %d", c_len - 1, cJSON_GetArrayItem(cjson_c, c_len - 1)->valueint);
+
+    free(buf);
+
+    cJSON *data = cJSON_CreateObject();
+    cJSON_AddNumberToObject(data, "ret", 0);
+    cJSON_AddStringToObject(data, "msg", "ok");
+
+    web_resp_json(req, data);
+    cJSON_Delete(data);
     return ESP_OK;
 }
 
@@ -39,7 +72,7 @@ void app_main(void)
     ESP_ERROR_CHECK(enable_wifi());
 
     httpd_handle_t server = start_webserver();
-    ESP_ERROR_CHECK(webserver_register_handler(server, "/test", HTTP_GET, test_get_handler));
+    ESP_ERROR_CHECK(webserver_register_handler(server, "/test", HTTP_POST, test_get_handler));
 
     // // err = mount_init();
     // // if (err != ESP_OK)

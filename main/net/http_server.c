@@ -5,15 +5,32 @@
 
 static char *TAG = "webserver";
 
+esp_err_t web_resp_json(httpd_req_t *req, cJSON *data)
+{
+    httpd_resp_set_status(req, HTTPD_200);
+    httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+
+    char *data_str = cJSON_Print(data);
+    if (data_str == NULL)
+    {
+        return ESP_FAIL;
+    }
+    httpd_resp_send(req, data_str, strlen(data_str));
+    cJSON_free(data_str);
+    return ESP_OK;
+}
+
 static esp_err_t handle_404(httpd_req_t *req, httpd_err_code_t error)
 {
-    httpd_resp_set_status(req, "404 Not Found");
+    httpd_resp_set_status(req, HTTPD_404);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
     cJSON *data_json = cJSON_CreateObject();
     cJSON_AddNumberToObject(data_json, "ret", 404);
     cJSON_AddStringToObject(data_json, "msg", "not found");
     char *data = cJSON_Print(data_json);
     httpd_resp_send(req, data, strlen(data));
+    cJSON_free(data);
+    cJSON_Delete(data_json);
     return ESP_OK;
 }
 
