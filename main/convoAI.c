@@ -10,8 +10,16 @@
 #include "peripheral/audio.h"
 #include "ui/home_page.h"
 #include "net/wifi.h"
+#include "net/http_server.h"
 
 static const char *TAG = "main";
+
+esp_err_t test_get_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "get test");
+    httpd_resp_send(req, "ok", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
 
 void app_main(void)
 {
@@ -29,6 +37,9 @@ void app_main(void)
 
     ESP_ERROR_CHECK(wifi_init());
     ESP_ERROR_CHECK(enable_wifi());
+
+    httpd_handle_t server = start_webserver();
+    ESP_ERROR_CHECK(webserver_register_handler(server, "/test", HTTP_GET, test_get_handler));
 
     // // err = mount_init();
     // // if (err != ESP_OK)
