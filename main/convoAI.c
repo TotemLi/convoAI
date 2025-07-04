@@ -11,6 +11,7 @@
 #include "ui/home_page.h"
 #include "net/wifi.h"
 #include "net/http_server.h"
+#include "net/http_client.h"
 #include "cjson/cJSON.h"
 
 static const char *TAG = "main";
@@ -71,8 +72,9 @@ void app_main(void)
     ESP_ERROR_CHECK(wifi_init());
     ESP_ERROR_CHECK(enable_wifi());
 
-    httpd_handle_t server = start_webserver();
-    ESP_ERROR_CHECK(webserver_register_handler(server, "/test", HTTP_POST, test_get_handler));
+    http_get("https://api.spreadwin.cn");
+    // httpd_handle_t server = start_webserver();
+    // ESP_ERROR_CHECK(webserver_register_handler(server, "/test", HTTP_POST, test_get_handler));
 
     // // err = mount_init();
     // // if (err != ESP_OK)
